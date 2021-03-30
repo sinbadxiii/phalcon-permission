@@ -8,5 +8,8 @@ use Phalcon\Mvc\Model;
 
 class PermissionsModel extends Model
 {
-
+    public function initialize()
+    {
+        $this->setSource("permissions");
+    }
 }

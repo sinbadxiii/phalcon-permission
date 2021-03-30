@@ -9,6 +9,7 @@ use Phalcon\Acl\Component;
 use Phalcon\Acl\Enum;
 use Phalcon\Acl\Role;
 use Phalcon\Di;
+use Sinbadxiii\PhalconPermission\Resources\ResourcesModel;
 use Sinbadxiii\PhalconPermission\Roles\RolesModel;
 
 class Acl
@@ -55,17 +56,18 @@ class Acl
             return true;
         }
 
-        $componentSlug = strtolower(implode('.', [
-            $moduleName,
-            $dispatcher->getControllerName()
-        ]));
+        $componentSlug = strtolower(
+            !empty($moduleName) ? implode('.', [
+                $moduleName,$dispatcher->getControllerName()
+            ]) : $dispatcher->getControllerName()
+        );
 
         $actionSlug =  $dispatcher->getActionName();
 
         $user = Di::getDefault()->getShared('auth')->user();
 
         if (!$user) {
-            die("exception not auth");
+            die("here will be ExceptionNotAuth");
         }
 
         foreach ($user->roles as $role) {
@@ -87,22 +89,21 @@ class Acl
             $roles = RolesModel::find();
 
             foreach ($roles as $role) {
-                    $aclMemory->addRole($role->name);
+                $aclMemory->addRole($role->name);
             }
 
-            $aclMemory->addComponent("crm.invoices", ["list", "edit"]);
-            $aclMemory->addComponent("crm.storehouses", ["list", "edit"]);
-            $aclMemory->addComponent("crm.contragents", ["list", "edit"]);
-            $aclMemory->addComponent("crm.providers", ["list", "edit"]);
+            $resources = ResourcesModel::find();
 
-            $aclMemory->addComponent("admin.index", ["index"]);
+            foreach ($resources as $resource) {
+                $aclMemory->addComponent($resource->name, ["list", "edit"]);
+            }
 
-            $aclMemory->allow("Администратор", "crm.invoices", "list");
-            $aclMemory->allow("Администратор", "crm.storehouses", "*");
-            $aclMemory->allow("Администратор", "crm.contragents", "*");
-            $aclMemory->allow("Администратор", "crm.providers", "*");
-
-            $aclMemory->allow("Администратор", "admin.index", "*");
+            foreach ($roles as $role) {
+                $aclMemory->addRole($role->name);
+                foreach ($resources as $resource) {
+                    $aclMemory->allow($role->name, $resource->name, "*");
+                }
+            }
 
             $this->setAcl($aclMemory);
 
