@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Sinbadxiii\PhalconPermission\Access;
 
 use Phalcon\Acl\Adapter\Memory;
-use Phalcon\Acl\Component;
 use Phalcon\Acl\Enum;
-use Phalcon\Acl\Role;
 use Phalcon\Di;
 use Sinbadxiii\PhalconPermission\Resources\ResourcesModel;
 use Sinbadxiii\PhalconPermission\Roles\RolesModel;
@@ -17,17 +15,21 @@ class Acl
     protected const CACHE_KEY     = "acl";
     protected const SCOPE_PRIVATE = 'private';
     protected const ALWAYS        = 'always';
+    protected const ACCESS_DENY   = 'deny';
+    protected const ACCESS_ALLOW  = 'allow';
+    protected const SUPER_GRANT   = "*";
 
     protected $permission;
     protected $modules;
-    protected $privates;
+    protected $privates = [];
 
     protected $acl;
     protected $cache;
     protected $config;
 
+    protected $provider;
 
-    public function __construct($config, $modules)
+    public function __construct($config, $modules = [])
     {
         $this->config  = $config;
         $this->modules = $modules;
@@ -58,7 +60,7 @@ class Acl
 
         $componentSlug = strtolower(
             !empty($moduleName) ? implode('.', [
-                $moduleName,$dispatcher->getControllerName()
+                $moduleName, $dispatcher->getControllerName()
             ]) : $dispatcher->getControllerName()
         );
 
@@ -80,35 +82,40 @@ class Acl
 
     private function buildMap(): void
     {
-        $aclMemory = $this->getAcl();
+        $aclManager = $this->getAcl() ?: $this->rebuildingMap();
+        $this->setAcl($aclManager);
+    }
 
-        if (!$aclMemory) {
-            $aclMemory = new Memory();
-            $aclMemory->setDefaultAction(Enum::DENY);
+    public function rebuildingMap()
+    {
+        $aclManager = new Memory();
 
-            $roles = RolesModel::find();
+        $aclManager->setDefaultAction(
+            $this->config->access->default === self::ACCESS_DENY ? Enum::DENY : Enum::ALLOW
+        );
 
-            foreach ($roles as $role) {
-                $aclMemory->addRole($role->name);
-            }
+        $roles = RolesModel::find();
 
-            $resources = ResourcesModel::find();
-
-            foreach ($resources as $resource) {
-                $aclMemory->addComponent($resource->name, ["list", "edit"]);
-            }
-
-            foreach ($roles as $role) {
-                $aclMemory->addRole($role->name);
-                foreach ($resources as $resource) {
-                    $aclMemory->allow($role->name, $resource->name, "*");
-                }
-            }
-
-            $this->setAcl($aclMemory);
-
+        foreach ($roles as $role) {
+            $aclManager->addRole($role->name);
         }
-        $this->acl = $aclMemory;
+
+        $resources = ResourcesModel::find();
+
+        foreach ($resources as $resource) {
+            $actions = $resource->getActionsName();
+            $aclManager->addComponent($resource->name, $actions);
+        }
+
+        foreach ($roles as $role) {
+            $aclManager->addRole($role->name);
+            foreach ($resources as $resource) {
+                $actions = $resource->getActionsName();
+                $aclManager->allow($role->name, $resource->name, $actions);
+            }
+        }
+
+        return $aclManager;
     }
 
     /**
@@ -120,11 +127,12 @@ class Acl
     }
 
     /**
-     * @param Memory $aclMemory
+     * @param Memory $aclManager
      */
-    private function setAcl(Memory $aclMemory)
+    private function setAcl(Memory $aclManager)
     {
-        $this->cache->set($this->getKey(), serialize($aclMemory));
+        $this->cache->set($this->getKey(), serialize($aclManager));
+        $this->acl = $aclManager;
     }
 
     /**
@@ -161,4 +169,15 @@ class Acl
         return Di::getDefault()->getShared('request')->isAjax() &&
             $this->config->ajax === self::ALWAYS;
     }
+
+    public function getRoles()
+    {
+        return $this->getAcl()->getRoles();
+    }
+
+    public function getResources()
+    {
+        return $this->getAcl()->getComponents();
+    }
+
 }

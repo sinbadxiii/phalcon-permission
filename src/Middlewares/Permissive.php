@@ -16,13 +16,19 @@ class Permissive extends Injectable
             return true;
         }
 
-        return $this->redirectTo();
+        $this->redirectTo();
 
         return false;
     }
 
     public function redirectTo()
     {
-        //custom redirect url
+//        custom redirect url, ex.
+//        return $this->dispatcher->forward(
+//            [
+//                'controller' => 'error',
+//                'action' => 'error403'
+//            ]
+//        );
     }
 }
