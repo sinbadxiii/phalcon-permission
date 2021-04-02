@@ -1,0 +1,29 @@
+{
+  "name": "sinbadxiii/phalcon-permission",
+  "description": "Simple User Permission For Phalcon",
+  "keywords": ["phalcon", "framework", "auth", "permission", "Phalcon Permission"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Sergey Mukhin",
+      "email": "sinbadxiii@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.4 || ^8.0"
+  },
+  "require-dev": {
+  },
+  "autoload": {
+    "psr-4": {
+      "Sinbadxiii\\PhalconPermission\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Sinbadxiii\\PhalconPermission\\Tests\\": "tests/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
