@@ -9,10 +9,11 @@ use Phalcon\Acl\Enum;
 use Phalcon\Cache;
 use Phalcon\Di;
 use Sinbadxiii\PhalconPermission\Exceptions\NotAuthorizedException;
+use Sinbadxiii\PhalconPermission\Exceptions\DoesntAnnotation;
 use Sinbadxiii\PhalconPermission\Providers\ProviderInterface;
 use Sinbadxiii\PhalconPermission\Resources\ResourcesModel;
-use Sinbadxiii\PhalconPermission\Roles\RolesModel;
 use Sinbadxiii\PhalconPermission\Access\Enum as AclEnum;
+use Sinbadxiii\PhalconPermission\Roles\RolesModel;
 
 use function strtolower;
 use function implode;
@@ -22,7 +23,7 @@ use function in_array;
 
 class Acl
 {
-    protected const CACHE_KEY     = "acl";
+    protected const CACHE_KEY = "acl";
 
     protected array $privates = [];
 
@@ -53,6 +54,7 @@ class Acl
         $this->buildMap();
 
         if (
+            !$this->isPublished() ||
             $this->isAllowedAjax() ||
             $this->notPrivate($moduleName) ||
             $this->isAllowedGuests($controller)
@@ -67,6 +69,22 @@ class Acl
         );
 
         $actionSlug =  $dispatcher->getActionName();
+
+        if ($this->config->access->endpoint === 'type') {
+
+            $data = Di::getDefault()->getShared('annotations')
+                ->getMethod($controller, $actionSlug . 'Action');
+
+            try {
+                $typeAccess = $data->get('accessType')->getArguments()[0];
+                $actionSlug = $typeAccess;
+            }
+            catch (\Throwable $t) {
+                throw new DoesntAnnotation($t->getMessage());
+//                $actionSlug = "default";
+            }
+
+        }
 
         $user = Di::getDefault()->getShared('auth')->user();
 
@@ -171,20 +189,35 @@ class Acl
             $this->config->ajax === AclEnum::ALWAYS;
     }
 
+    /**
+     * @return mixed
+     */
     public function getRoles()
     {
         return $this->getAcl()->getRoles();
     }
 
+    /**
+     * @return mixed
+     */
     public function getResources()
     {
 
         return $this->getAcl()->getComponents();
     }
 
+    /**
+     * @return mixed
+     */
     private function getModules()
     {
         return $this->config->modules;
     }
+
+    private function isPublished()
+    {
+        return $this->config->published === 'true';
+    }
+
 
 }
