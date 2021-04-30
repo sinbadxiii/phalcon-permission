@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Sinbadxiii\PhalconPermission\Access\Mode;
 
+use Phalcon\Mvc\Dispatcher;
+use Sinbadxiii\PhalconPermission\Access\Enum as AclEnum;
 use strtolower;
 
 /**
@@ -12,6 +14,23 @@ use strtolower;
  */
 class NotModulesMode extends ModeAbstract implements Modular
 {
+    /**
+     * NotModulesMode constructor.
+     * @param Dispatcher $dispatcher
+     */
+    public function __construct(Dispatcher $dispatcher)
+    {
+        $this->dispatcher = $dispatcher;
+    }
+
+    /**
+     * @return bool
+     */
+    public function notPrivate(): bool
+    {
+        return false;
+    }
+
     /**
      * @param $controller
      * @return string

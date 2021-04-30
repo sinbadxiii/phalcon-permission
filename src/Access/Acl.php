@@ -237,7 +237,7 @@ class Acl
      */
     private function isActive()
     {
-        return $this->config->published === 'true';
+        return $this->config->published === true;
     }
 
     /**
